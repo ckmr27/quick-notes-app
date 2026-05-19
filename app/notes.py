@@ -6,6 +6,15 @@ from app.models import Note
 
 notes = Blueprint("notes", __name__)
 
+def _is_ajax():
+    return request.is_json or request.headers.get("X-Requested-With") == "XMLHttpRequest"
+
+def _get_fields():
+    data = request.get_json() if request.is_json else request.form
+    if not data:
+        return "", ""
+    return (data.get("title") or "").strip(), (data.get("content") or "").strip()
+
 @notes.route("/dashboard")
 @login_required
 def dashboard():
@@ -16,39 +25,34 @@ def dashboard():
 @login_required
 def create_note():
     if request.method == "POST":
-        if request.is_json:
-            data = request.get_json() or {}
-            title = data.get("title", "").strip()
-            content = data.get("content", "").strip()
-        else:
-            title = request.form.get("title", "").strip()
-            content = request.form.get("content", "").strip()
+        title, content = _get_fields()
+        ajax = _is_ajax()
         
         if not title or not content:
-            if request.is_json or request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            if ajax:
                 return {"error": "Title and Content are required."}, 400
             flash("Title and Content are required.", "danger")
             return redirect(url_for("notes.create_note"))
             
         if len(title) > 200 or len(content) > 10000:
-            if request.is_json or request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            if ajax:
                 return {"error": "Oversized input limit exceeded."}, 400
             flash("Oversized input. Title must be under 200 characters and content under 10000 characters.", "danger")
             return redirect(url_for("notes.create_note"))
             
-        new_note = Note(title=title, content=content, user_id=current_user.id)
-        db.session.add(new_note)
+        note = Note(title=title, content=content, user_id=current_user.id)
+        db.session.add(note)
         db.session.commit()
         
-        if request.is_json or request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        if ajax:
             return {
                 "success": True,
                 "message": "Note created successfully!",
                 "note": {
-                    "id": new_note.id,
-                    "title": new_note.title,
-                    "content": new_note.content,
-                    "date_created": new_note.date_created.strftime('%b %d, %Y')
+                    "id": note.id,
+                    "title": note.title,
+                    "content": note.content,
+                    "date_created": note.date_created.strftime('%b %d, %Y')
                 }
             }
             
@@ -62,29 +66,24 @@ def create_note():
 def edit_note(note_id):
     note = db.get_or_404(Note, note_id)
     
-    # Secure validation: User must be owner
+    # check access
     if note.user_id != current_user.id:
-        if request.is_json or request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        if _is_ajax():
             return {"error": "Unauthorized"}, 403
         abort(403)
         
     if request.method == "POST":
-        if request.is_json:
-            data = request.get_json() or {}
-            title = data.get("title", "").strip()
-            content = data.get("content", "").strip()
-        else:
-            title = request.form.get("title", "").strip()
-            content = request.form.get("content", "").strip()
+        title, content = _get_fields()
+        ajax = _is_ajax()
         
         if not title or not content:
-            if request.is_json or request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            if ajax:
                 return {"error": "Title and Content are required."}, 400
             flash("Title and Content are required.", "danger")
             return redirect(url_for("notes.edit_note", note_id=note.id))
             
         if len(title) > 200 or len(content) > 10000:
-            if request.is_json or request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            if ajax:
                 return {"error": "Oversized input limit exceeded."}, 400
             flash("Oversized input. Title must be under 200 characters and content under 10000 characters.", "danger")
             return redirect(url_for("notes.edit_note", note_id=note.id))
@@ -93,7 +92,7 @@ def edit_note(note_id):
         note.content = content
         db.session.commit()
         
-        if request.is_json or request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        if ajax:
             return {
                 "success": True,
                 "message": "Note updated successfully!",
@@ -115,16 +114,16 @@ def edit_note(note_id):
 def delete_note(note_id):
     note = db.get_or_404(Note, note_id)
     
-    # Secure validation: User must be owner
+    # check access
     if note.user_id != current_user.id:
-        if request.is_json or request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        if _is_ajax():
             return {"error": "Unauthorized"}, 403
         abort(403)
         
     db.session.delete(note)
     db.session.commit()
     
-    if request.is_json or request.headers.get("X-Requested-With") == "XMLHttpRequest":
+    if _is_ajax():
         return {"success": True, "message": "Note deleted successfully!"}
         
     flash("Note deleted successfully!", "success")
