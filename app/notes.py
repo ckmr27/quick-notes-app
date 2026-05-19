@@ -1,4 +1,5 @@
 from flask import Blueprint, render_template, redirect, url_for, request, flash, abort
+# pyrefly: ignore [missing-import]
 from flask_login import login_required, current_user
 from app.extensions import db
 from app.models import Note

@@ -56,14 +56,12 @@
                                 {{ note.date_created.strftime('%b %d, %Y') }}
                             </span>
                             <div class="note-actions">
-                                <button type="button" onclick="editNote({{ note.id }}, `{{ note.title | escape }}`, `{{ note.content | escape }}`)" class="btn btn-secondary btn-sm" title="Edit Note">
+                                <button type="button" class="btn btn-secondary btn-sm edit-btn" data-id="{{ note.id }}" data-title="{{ note.title | e }}" data-content="{{ note.content | e }}" title="Edit Note">
                                     Edit
                                 </button>
-                                <form onsubmit="deleteNote(event, {{ note.id }})" style="display: inline;">
-                                    <button type="submit" class="btn btn-danger btn-sm" title="Delete Note">
-                                        Delete
-                                    </button>
-                                </form>
+                                <button type="button" class="btn btn-danger btn-sm delete-btn" data-id="{{ note.id }}" title="Delete Note">
+                                    Delete
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -89,6 +87,27 @@
     const cancelBtn = document.getElementById('cancel-btn');
     const saveBtn = document.getElementById('save-btn');
     const notesGrid = document.getElementById('notes-grid');
+
+    // Event Delegation for Edit and Delete buttons inside the Notes Grid
+    notesGrid.addEventListener('click', function(e) {
+        // Edit Button Clicked
+        const editBtn = e.target.closest('.edit-btn');
+        if (editBtn) {
+            const id = editBtn.dataset.id;
+            const title = editBtn.dataset.title;
+            const content = editBtn.dataset.content;
+            editNote(id, title, content);
+            return;
+        }
+
+        // Delete Button Clicked
+        const deleteBtn = e.target.closest('.delete-btn');
+        if (deleteBtn) {
+            const id = deleteBtn.dataset.id;
+            deleteNote(id);
+            return;
+        }
+    });
 
     // Handle Form Submit (Create or Update)
     noteForm.addEventListener('submit', async function(e) {
@@ -126,9 +145,11 @@
                             .replace(/</g, "&lt;")
                             .replace(/>/g, "&gt;")
                             .replace(/\n/g, '<br>');
-                        // Update edit button event handler
-                        const editBtn = card.querySelector('.note-actions button');
-                        editBtn.setAttribute('onclick', `editNote(${result.note.id}, \`${escapeHTML(result.note.title)}\`, \`${escapeHTML(result.note.content)}\`)`);
+                        
+                        // Update datasets on edit button
+                        const editBtn = card.querySelector('.edit-btn');
+                        editBtn.dataset.title = result.note.title;
+                        editBtn.dataset.content = result.note.content;
                     }
                 } else {
                     // Remove empty state if present
@@ -141,22 +162,38 @@
                     card.id = `note-${result.note.id}`;
                     card.dataset.id = result.note.id;
                     card.innerHTML = `
-                        <h3 class="note-title">${escapeHTML(result.note.title)}</h3>
-                        <div class="note-content">${escapeHTML(result.note.content).replace(/\n/g, '<br>')}</div>
+                        <h3 class="note-title"></h3>
+                        <div class="note-content"></div>
                         <div class="note-footer">
                             <span class="note-date">${result.note.date_created}</span>
                             <div class="note-actions">
-                                <button type="button" onclick="editNote(${result.note.id}, \`${escapeHTML(result.note.title)}\`, \`${escapeHTML(result.note.content)}\`)" class="btn btn-secondary btn-sm" title="Edit Note">
+                                <button type="button" class="btn btn-secondary btn-sm edit-btn" title="Edit Note">
                                     Edit
                                 </button>
-                                <form onsubmit="deleteNote(event, ${result.note.id})" style="display: inline;">
-                                    <button type="submit" class="btn btn-danger btn-sm" title="Delete Note">
-                                        Delete
-                                    </button>
-                                </form>
+                                <button type="button" class="btn btn-danger btn-sm delete-btn" title="Delete Note">
+                                    Delete
+                                </button>
                             </div>
                         </div>
                     `;
+                    
+                    // Set content text safely to prevent XSS
+                    card.querySelector('.note-title').textContent = result.note.title;
+                    card.querySelector('.note-content').innerHTML = result.note.content
+                        .replace(/&/g, "&amp;")
+                        .replace(/</g, "&lt;")
+                        .replace(/>/g, "&gt;")
+                        .replace(/\n/g, '<br>');
+                    
+                    // Set data attributes on new buttons
+                    const editBtn = card.querySelector('.edit-btn');
+                    editBtn.dataset.id = result.note.id;
+                    editBtn.dataset.title = result.note.title;
+                    editBtn.dataset.content = result.note.content;
+
+                    const deleteBtn = card.querySelector('.delete-btn');
+                    deleteBtn.dataset.id = result.note.id;
+                    
                     // Prepend new card
                     notesGrid.insertBefore(card, notesGrid.firstChild);
                 }
@@ -173,16 +210,16 @@
     });
 
     // Handle Edit Mode
-    window.editNote = function(id, title, content) {
+    function editNote(id, title, content) {
         noteIdInput.value = id;
-        titleInput.value = unescapeHTML(title);
-        contentInput.value = unescapeHTML(content);
+        titleInput.value = title;
+        contentInput.value = content;
         formTitle.textContent = 'Edit Note';
         formSubtitle.textContent = 'Update your secure note';
         cancelBtn.style.display = 'inline-flex';
         saveBtn.textContent = 'Update Note';
         titleInput.focus();
-    };
+    }
 
     // Cancel Edit Mode
     cancelBtn.addEventListener('click', resetForm);
@@ -197,8 +234,7 @@
     }
 
     // Handle Delete Note
-    window.deleteNote = async function(event, id) {
-        event.preventDefault();
+    async function deleteNote(id) {
         if (!confirm('Are you sure you want to delete this note?')) return;
         
         try {
@@ -238,25 +274,6 @@
             console.error('Error:', error);
             showNotification('Network error occurred.', 'danger');
         }
-    };
-
-    // Helper functions for escaping/unescaping HTML
-    function escapeHTML(str) {
-        return str
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
-    }
-
-    function unescapeHTML(str) {
-        return str
-            .replace(/&amp;/g, "&")
-            .replace(/&lt;/g, "<")
-            .replace(/&gt;/g, ">")
-            .replace(/&quot;/g, '"')
-            .replace(/&#039;/g, "'");
     }
 
     // Dynamic Flash Notification System
