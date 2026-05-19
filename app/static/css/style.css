@@ -388,3 +388,37 @@ footer {
         transform: translateY(0);
     }
 }
+
+/* Single Page Dashboard Layout */
+.dashboard-container {
+    display: flex;
+    gap: 2.5rem;
+    align-items: flex-start;
+    width: 100%;
+}
+
+.form-sidebar {
+    width: 360px;
+    flex-shrink: 0;
+    position: sticky;
+    top: 90px;
+}
+
+.notes-section {
+    flex-grow: 1;
+}
+
+.note-form-card {
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+}
+
+@media (max-width: 900px) {
+    .dashboard-container {
+        flex-direction: column;
+        gap: 2rem;
+    }
+    .form-sidebar {
+        width: 100%;
+        position: static;
+    }
+}
