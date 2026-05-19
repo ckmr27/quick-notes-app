@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+
+{% block title %}Sign Up | SecureNotes{% endblock %}
+
+{% block content %}
+<div class="auth-card">
+    <div class="auth-header">
+        <h2>Create Account</h2>
+        <p>Get started with secure note taking</p>
+    </div>
+    
+    <form action="{{ url_for('auth.register') }}" method="POST">
+        <div class="form-group">
+            <label for="username" class="form-label">Username</label>
+            <input type="text" id="username" name="username" class="form-control" placeholder="Choose a username" required minlength="3" autocomplete="username">
+        </div>
+        
+        <div class="form-group">
+            <label for="password" class="form-label">Password</label>
+            <input type="password" id="password" name="password" class="form-control" placeholder="Create a password (min 6 chars)" required minlength="6" autocomplete="new-password">
+        </div>
+        
+        <div class="form-group">
+            <label for="confirm_password" class="form-label">Confirm Password</label>
+            <input type="password" id="confirm_password" name="confirm_password" class="form-control" placeholder="Confirm your password" required minlength="6" autocomplete="new-password">
+        </div>
+        
+        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 0.5rem; padding: 0.75rem;">
+            Create Account
+        </button>
+    </form>
+    
+    <div style="text-align: center; margin-top: 1.5rem; font-size: 0.9rem;">
+        <span style="color: var(--text-secondary);">Already have an account?</span>
+        <a href="{{ url_for('auth.login') }}" style="color: var(--primary); text-decoration: none; font-weight: 600; margin-left: 0.25rem;">Log In</a>
+    </div>
+</div>
+{% endblock %}
